@@ -1,12 +1,20 @@
+/*
+ * Copyright 2021 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.configservice.controller;
-
-import com.google.common.cache.Cache;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 
 import com.ctrip.framework.apollo.biz.entity.ReleaseMessage;
 import com.ctrip.framework.apollo.biz.grayReleaseRule.GrayReleaseRulesHolder;
@@ -14,26 +22,30 @@ import com.ctrip.framework.apollo.biz.message.Topics;
 import com.ctrip.framework.apollo.configservice.util.NamespaceUtil;
 import com.ctrip.framework.apollo.configservice.util.WatchKeysUtil;
 import com.ctrip.framework.apollo.core.dto.ApolloConfig;
-
+import com.google.common.cache.Cache;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -58,6 +70,7 @@ public class ConfigFileControllerTest {
   private String someNamespace;
   private String someDataCenter;
   private String someClientIp;
+  private String someClientLabel;
   @Mock
   private HttpServletResponse someResponse;
   @Mock
@@ -65,19 +78,20 @@ public class ConfigFileControllerTest {
   Multimap<String, String> watchedKeys2CacheKey;
   Multimap<String, String> cacheKey2WatchedKeys;
 
+  private static final Gson GSON = new Gson();
+
   @Before
   public void setUp() throws Exception {
-    configFileController = new ConfigFileController();
-    ReflectionTestUtils.setField(configFileController, "configController", configController);
-    ReflectionTestUtils.setField(configFileController, "watchKeysUtil", watchKeysUtil);
-    ReflectionTestUtils.setField(configFileController, "namespaceUtil", namespaceUtil);
-    ReflectionTestUtils.setField(configFileController, "grayReleaseRulesHolder", grayReleaseRulesHolder);
+    configFileController = new ConfigFileController(
+        configController, namespaceUtil, watchKeysUtil, grayReleaseRulesHolder
+    );
 
     someAppId = "someAppId";
     someClusterName = "someClusterName";
     someNamespace = "someNamespace";
     someDataCenter = "someDataCenter";
     someClientIp = "10.1.1.1";
+    someClientLabel = "myLabel";
 
     when(namespaceUtil.filterNamespaceName(someNamespace)).thenReturn(someNamespace);
     when(namespaceUtil.normalizeNamespace(someAppId, someNamespace)).thenReturn(someNamespace);
@@ -112,7 +126,7 @@ public class ConfigFileControllerTest {
     ApolloConfig someApolloConfig = mock(ApolloConfig.class);
     when(someApolloConfig.getConfigurations()).thenReturn(configurations);
     when(configController
-        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, null,
+        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, someClientLabel, null,
             someRequest, someResponse)).thenReturn(someApolloConfig);
     when(watchKeysUtil
         .assembleAllWatchKeys(someAppId, someClusterName, someNamespace, someDataCenter))
@@ -121,7 +135,7 @@ public class ConfigFileControllerTest {
     ResponseEntity<String> response =
         configFileController
             .queryConfigAsProperties(someAppId, someClusterName, someNamespace, someDataCenter,
-                someClientIp, someRequest, someResponse);
+                someClientIp, someClientLabel, someRequest, someResponse);
 
     assertEquals(2, watchedKeys2CacheKey.size());
     assertEquals(2, cacheKey2WatchedKeys.size());
@@ -137,12 +151,12 @@ public class ConfigFileControllerTest {
     ResponseEntity<String> anotherResponse =
         configFileController
             .queryConfigAsProperties(someAppId, someClusterName, someNamespace, someDataCenter,
-                someClientIp, someRequest, someResponse);
+                someClientIp, someClientLabel, someRequest, someResponse);
 
     assertEquals(response, anotherResponse);
 
     verify(configController, times(1))
-        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, null,
+        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, someClientLabel,null,
             someRequest, someResponse);
   }
 
@@ -150,7 +164,7 @@ public class ConfigFileControllerTest {
   public void testQueryConfigAsJson() throws Exception {
     String someKey = "someKey";
     String someValue = "someValue";
-    Gson gson = new Gson();
+
     Type responseType = new TypeToken<Map<String, String>>(){}.getType();
 
     String someWatchKey = "someWatchKey";
@@ -160,7 +174,7 @@ public class ConfigFileControllerTest {
         ImmutableMap.of(someKey, someValue);
     ApolloConfig someApolloConfig = mock(ApolloConfig.class);
     when(configController
-        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, null,
+        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, someClientLabel,null,
             someRequest, someResponse)).thenReturn(someApolloConfig);
     when(someApolloConfig.getConfigurations()).thenReturn(configurations);
     when(watchKeysUtil
@@ -170,17 +184,16 @@ public class ConfigFileControllerTest {
     ResponseEntity<String> response =
         configFileController
             .queryConfigAsJson(someAppId, someClusterName, someNamespace, someDataCenter,
-                someClientIp, someRequest, someResponse);
+                someClientIp, someClientLabel, someRequest, someResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(configurations, gson.fromJson(response.getBody(), responseType));
+    assertEquals(configurations, GSON.fromJson(response.getBody(), responseType));
   }
 
   @Test
   public void testQueryConfigWithGrayRelease() throws Exception {
     String someKey = "someKey";
     String someValue = "someValue";
-    Gson gson = new Gson();
     Type responseType = new TypeToken<Map<String, String>>(){}.getType();
 
     Map<String, String> configurations =
@@ -192,25 +205,25 @@ public class ConfigFileControllerTest {
     ApolloConfig someApolloConfig = mock(ApolloConfig.class);
     when(someApolloConfig.getConfigurations()).thenReturn(configurations);
     when(configController
-        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, null,
+        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, someClientLabel, null,
             someRequest, someResponse)).thenReturn(someApolloConfig);
 
     ResponseEntity<String> response =
         configFileController
             .queryConfigAsJson(someAppId, someClusterName, someNamespace, someDataCenter,
-                someClientIp, someRequest, someResponse);
+                someClientIp, someClientLabel, someRequest, someResponse);
 
     ResponseEntity<String> anotherResponse =
         configFileController
             .queryConfigAsJson(someAppId, someClusterName, someNamespace, someDataCenter,
-                someClientIp, someRequest, someResponse);
+                someClientIp, someClientLabel, someRequest, someResponse);
 
     verify(configController, times(2))
-        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, null,
+        .queryConfig(someAppId, someClusterName, someNamespace, someDataCenter, "-1", someClientIp, someClientLabel, null,
             someRequest, someResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals(configurations, gson.fromJson(response.getBody(), responseType));
+    assertEquals(configurations, GSON.fromJson(response.getBody(), responseType));
     assertTrue(watchedKeys2CacheKey.isEmpty());
     assertTrue(cacheKey2WatchedKeys.isEmpty());
   }

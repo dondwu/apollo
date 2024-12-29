@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Apollo Authors
+ * Copyright 2024 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,8 +86,11 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
             scope.mergeAndPublish = mergeAndPublish;
             scope.addRuleItem = addRuleItem;
             scope.editRuleItem = editRuleItem;
+            scope.formatContent = formatContent;
 
             scope.deleteNamespace = deleteNamespace;
+            scope.exportNamespace = exportNamespace;
+            scope.importNamespace = importNamespace;
 
             var subscriberId = EventManager.subscribe(EventManager.EventType.UPDATE_GRAY_RELEASE_RULES,
                 function (context) {
@@ -350,6 +353,7 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
                                     publicNamespace.hasPublishedItem = true;
                                 }
                             });
+                            publicNamespace.isPropertiesFormat = publicNamespace.format == 'properties';
                             loadParentNamespaceText(namespace);
                         });
                 }
@@ -731,6 +735,17 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
                 }
             }
 
+            // 格式化
+            function formatContent(namespace) {
+                try {
+                    if (namespace.format === 'json') {
+                        namespace.editText = JSON.stringify(JSON.parse(namespace.editText), null, 4);
+                    }
+                } catch (e) {
+                    toastr.error('format content failed: ' + e.message);
+                }
+            }
+
             function goToSyncPage(namespace) {
                 if (!scope.lockCheck(namespace)) {
                     return false;
@@ -751,6 +766,7 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
             }
 
             function modifyByText(namespace) {
+
                 var model = {
                     configText: namespace.editText,
                     namespaceId: namespace.baseInfo.id,
@@ -813,7 +829,6 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
             }
 
             function parseModel2Text(namespace) {
-
                 if (namespace.items.length == 0) {
                     namespace.itemCnt = 0;
                     return "";
@@ -840,7 +855,7 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
                 var itemCnt = 0;
                 namespace.items.forEach(function (item) {
                     //deleted key
-                    if (!item.item.dataChangeLastModifiedBy) {
+                    if (item.isDeleted) {
                         return;
                     }
                     if (item.item.key) {
@@ -914,7 +929,6 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
 
             //normal release and gray release
             function publish(namespace) {
-
                 if (!namespace.hasReleasePermission) {
                     AppUtil.showModal('#releaseNoPermissionDialog');
                     return;
@@ -961,6 +975,16 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
                 EventManager.emit(EventManager.EventType.PRE_DELETE_NAMESPACE, { namespace: namespace });
             }
 
+            function exportNamespace(namespace) {
+                $window.location.href =
+                    AppUtil.prefixPath() + '/apps/' + scope.appId + "/envs/" + scope.env + "/clusters/" + scope.cluster
+                    + "/namespaces/" + namespace.baseInfo.namespaceName + "/items/export"
+            }
+
+            function importNamespace(namespace) {
+                EventManager.emit(EventManager.EventType.PRE_IMPORT_NAMESPACE, { namespace: namespace });
+            }
+
             //theme: https://github.com/ajaxorg/ace-builds/tree/ba3b91e04a5aa559d56ac70964f9054baa0f4caf/src-min
             scope.aceConfig = {
                 $blockScrolling: Infinity,
@@ -974,6 +998,12 @@ function directive($window, $translate, toastr, AppUtil, EventManager, Permissio
                         minLines: 10,
                         maxLines: 20
                     })
+                },
+                onChange: function (e) {
+                    if ((e[0].action === 'insert') && (scope.namespace.hasOwnProperty("editText"))) {
+                        scope.namespace.editText = e[1].session.getValue();
+                    }
+
                 }
             };
 

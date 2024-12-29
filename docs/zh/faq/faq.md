@@ -11,13 +11,13 @@ Apollo（阿波罗）是一款可靠的分布式配置管理中心，诞生于�
 请参考[Apollo核心概念之“Namespace”](zh/design/apollo-core-concept-namespace)
 
 ## 4. 我想要接入Apollo，该如何操作？
-请参考[Apollo使用指南](zh/usage/apollo-user-guide)
+请参考[Apollo使用指南](zh/portal/apollo-user-guide)
 
 ## 5. 我的应用需要不同机房的配置不一样，Apollo是否能支持？
-Apollo是支持的。请参考[Apollo使用指南](zh/usage/apollo-user-guide)中的`三、集群独立配置说明`
+Apollo是支持的。请参考[Apollo使用指南](zh/portal/apollo-user-guide)中的`三、集群独立配置说明`
 
 ## 6. 我有多个应用需要使用同一份配置，Apollo是否能支持？
-Apollo是支持的。请参考[Apollo使用指南](zh/usage/apollo-user-guide)中的`四、多个AppId使用同一份配置`
+Apollo是支持的。请参考[Apollo使用指南](zh/portal/apollo-user-guide)中的`四、多个AppId使用同一份配置`
 
 ## 7. Apollo是否支持查看权限控制或者配置加密？
 从1.1.0版本开始，apollo-portal增加了查看权限的支持，可以支持配置某个环境只允许项目成员查看私有Namespace的配置。
@@ -54,4 +54,4 @@ Spring Cloud Config的精妙之处在于它的配置存储于Git，这就天然�
 ## 10. Apollo和Disconf相比有什么优点？
 
 由于我们自己并非Disconf的资深用户，所以无法主观地给出评价。
-不过之前Apollo技术支持群中的热心网友[@Krast](https://github.com/krast)做了一个[开源配置中心对比矩阵](https://github.com/ctripcorp/apollo/files/983064/default.pdf)，可以参考一下。
+不过之前Apollo技术支持群中的热心网友[@Krast](https://github.com/krast)做了一个[开源配置中心对比矩阵](https://github.com/apolloconfig/apollo/files/983064/default.pdf)，可以参考一下。

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Apollo Authors
+ * Copyright 2024 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,13 +52,13 @@ function IndexController($scope, $window, $translate, toastr, AppUtil, AppServic
 
         $scope.createdAppPage = 0;
         $scope.createdApps = [];
-        $scope.hasMoreCreatedApps = true;
+        $scope.hasMoreCreatedApps = false;
         $scope.favoritesPage = 0;
         $scope.favorites = [];
-        $scope.hasMoreFavorites = true;
+        $scope.hasMoreFavorites = false;
         $scope.publicNamespacePage = 0;
         $scope.publicNamespaces = [];
-        $scope.hasMorePublicNamespaces = true;
+        $scope.hasMorePublicNamespaces = false;
         $scope.allPublicNamespaces = [];
         $scope.visitedApps = [];
 
@@ -228,6 +228,7 @@ function IndexController($scope, $window, $translate, toastr, AppUtil, AppServic
             for (var j = 0; j < 10; j++) {
                 $scope.publicNamespaces.push($scope.allPublicNamespaces[$scope.publicNamespacePage * 10 + j])
             }
+            $scope.hasMorePublicNamespaces = true;
         }
         $scope.publicNamespacePage += 1;
     }
